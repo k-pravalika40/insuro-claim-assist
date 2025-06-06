@@ -2,6 +2,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Shield, Zap, Eye, Users } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const Index = () => {
   return (
@@ -15,8 +16,12 @@ const Index = () => {
               <span className="text-xl font-bold text-gray-900">InsuroAI</span>
             </div>
             <div className="flex space-x-4">
-              <Button variant="ghost">Login</Button>
-              <Button>Get Started</Button>
+              <Link to="/login">
+                <Button variant="ghost">Login</Button>
+              </Link>
+              <Link to="/register">
+                <Button>Get Started</Button>
+              </Link>
             </div>
           </div>
         </div>
@@ -35,9 +40,11 @@ const Index = () => {
               Get instant damage assessment, fraud detection, and settlement predictions powered by advanced AI.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button size="lg" className="px-8 py-3">
-                Submit a Claim
-              </Button>
+              <Link to="/register">
+                <Button size="lg" className="px-8 py-3">
+                  Submit a Claim
+                </Button>
+              </Link>
               <Button variant="outline" size="lg" className="px-8 py-3">
                 Learn More
               </Button>
@@ -164,7 +171,6 @@ const Index = () => {
         </div>
       </section>
 
-      {/* CTA Section */}
       <section className="py-20 px-4 sm:px-6 lg:px-8 bg-blue-600">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
@@ -173,13 +179,14 @@ const Index = () => {
           <p className="text-xl text-blue-100 mb-8">
             Join thousands of users who trust InsuroAI for their insurance claims
           </p>
-          <Button size="lg" variant="secondary" className="px-8 py-3">
-            Start Your Claim Today
-          </Button>
+          <Link to="/register">
+            <Button size="lg" variant="secondary" className="px-8 py-3">
+              Start Your Claim Today
+            </Button>
+          </Link>
         </div>
       </section>
 
-      {/* Footer */}
       <footer className="bg-gray-900 text-white py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
