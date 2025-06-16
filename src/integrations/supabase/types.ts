@@ -9,6 +9,42 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      claims: {
+        Row: {
+          claim_type: string | null
+          created_at: string | null
+          damage_image_url: string | null
+          description: string | null
+          id: string
+          incident_date: string | null
+          status: string | null
+          user_id: string | null
+          vehicle_number: string | null
+        }
+        Insert: {
+          claim_type?: string | null
+          created_at?: string | null
+          damage_image_url?: string | null
+          description?: string | null
+          id?: string
+          incident_date?: string | null
+          status?: string | null
+          user_id?: string | null
+          vehicle_number?: string | null
+        }
+        Update: {
+          claim_type?: string | null
+          created_at?: string | null
+          damage_image_url?: string | null
+          description?: string | null
+          id?: string
+          incident_date?: string | null
+          status?: string | null
+          user_id?: string | null
+          vehicle_number?: string | null
+        }
+        Relationships: []
+      }
       Claims: {
         Row: {
           claim_type: string | null
@@ -75,57 +111,62 @@ export type Database = {
       files: {
         Row: {
           claim_id: string | null
-          created_at: string
           file_type: string | null
-          file_url: string | null
-          id: number
+          file_url: string
+          id: string
           uploaded_at: string | null
+          user_id: string | null
         }
         Insert: {
           claim_id?: string | null
-          created_at?: string
           file_type?: string | null
-          file_url?: string | null
-          id?: number
+          file_url: string
+          id?: string
           uploaded_at?: string | null
+          user_id?: string | null
         }
         Update: {
           claim_id?: string | null
-          created_at?: string
           file_type?: string | null
-          file_url?: string | null
-          id?: number
+          file_url?: string
+          id?: string
           uploaded_at?: string | null
+          user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "files_claim_id_fkey"
+            columns: ["claim_id"]
+            isOneToOne: false
+            referencedRelation: "claims"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       users: {
         Row: {
-          created_at: string
+          address: string | null
+          created_at: string | null
           email: string | null
-          id: number
-          name: string | null
-          password_hash: string | null
-          role: string | null
-          updated_at: string | null
+          full_name: string | null
+          id: string
+          phone_number: string | null
         }
         Insert: {
-          created_at?: string
+          address?: string | null
+          created_at?: string | null
           email?: string | null
-          id?: number
-          name?: string | null
-          password_hash?: string | null
-          role?: string | null
-          updated_at?: string | null
+          full_name?: string | null
+          id: string
+          phone_number?: string | null
         }
         Update: {
-          created_at?: string
+          address?: string | null
+          created_at?: string | null
           email?: string | null
-          id?: number
-          name?: string | null
-          password_hash?: string | null
-          role?: string | null
-          updated_at?: string | null
+          full_name?: string | null
+          id?: string
+          phone_number?: string | null
         }
         Relationships: []
       }
