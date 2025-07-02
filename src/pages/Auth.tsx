@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Shield, Eye, EyeOff, AlertCircle } from "lucide-react";
+import { Shield, Eye, EyeOff, AlertCircle, CheckCircle } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -14,6 +14,7 @@ const Auth = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -28,6 +29,7 @@ const Auth = () => {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setSuccess(null);
 
     try {
       if (isLogin) {
@@ -50,8 +52,11 @@ const Auth = () => {
             setError(error.message);
           }
         } else {
-          setError(null);
-          alert('Please check your email to confirm your account before signing in.');
+          setSuccess('Account created successfully!');
+          // Wait a moment to show success message, then redirect
+          setTimeout(() => {
+            navigate('/dashboard');
+          }, 1500);
         }
       }
     } catch (err) {
@@ -99,6 +104,13 @@ const Auth = () => {
               <Alert variant="destructive" className="mb-4">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+
+            {success && (
+              <Alert className="mb-4 border-green-200 bg-green-50">
+                <CheckCircle className="h-4 w-4 text-green-600" />
+                <AlertDescription className="text-green-800">{success}</AlertDescription>
               </Alert>
             )}
 
@@ -184,6 +196,7 @@ const Auth = () => {
                   onClick={() => {
                     setIsLogin(!isLogin);
                     setError(null);
+                    setSuccess(null);
                     setFormData({ email: "", password: "", firstName: "", lastName: "" });
                   }}
                   className="text-blue-600 hover:text-blue-500 font-medium"
