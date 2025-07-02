@@ -1,45 +1,13 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Shield, Plus, FileText, Clock, CheckCircle, AlertTriangle, Eye } from "lucide-react";
+import { Shield, Plus, FileText } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import ClaimsTable from "@/components/ClaimsTable";
 
 const Dashboard = () => {
   const { user, signOut } = useAuth();
-
-  // Mock data for demonstration
-  const recentClaims = [
-    { id: "CLM-001", type: "Vehicle Damage", status: "Under Review", date: "2024-01-15", amount: "$2,500" },
-    { id: "CLM-002", type: "Theft", status: "Approved", date: "2024-01-10", amount: "$8,900" },
-    { id: "CLM-003", type: "Collision", status: "Processing", date: "2024-01-05", amount: "$4,200" },
-  ];
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "Approved":
-        return <CheckCircle className="h-4 w-4 text-green-600" />;
-      case "Under Review":
-        return <AlertTriangle className="h-4 w-4 text-yellow-600" />;
-      case "Processing":
-        return <Clock className="h-4 w-4 text-blue-600" />;
-      default:
-        return <FileText className="h-4 w-4 text-gray-600" />;
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "Approved":
-        return "bg-green-100 text-green-800";
-      case "Under Review":
-        return "bg-yellow-100 text-yellow-800";
-      case "Processing":
-        return "bg-blue-100 text-blue-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
 
   const handleSignOut = async () => {
     await signOut();
@@ -92,21 +60,6 @@ const Dashboard = () => {
           <Card className="hover:shadow-lg transition-shadow">
             <CardHeader className="text-center">
               <FileText className="h-12 w-12 text-green-600 mx-auto mb-2" />
-              <CardTitle>View All Claims</CardTitle>
-              <CardDescription>
-                Browse and manage all your submitted claims
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Link to="/claims">
-                <Button variant="outline" className="w-full">View Claims</Button>
-              </Link>
-            </CardContent>
-          </Card>
-
-          <Card className="hover:shadow-lg transition-shadow">
-            <CardHeader className="text-center">
-              <Shield className="h-12 w-12 text-purple-600 mx-auto mb-2" />
               <CardTitle>Policy Information</CardTitle>
               <CardDescription>
                 View your policy details and coverage information
@@ -116,42 +69,25 @@ const Dashboard = () => {
               <Button variant="outline" className="w-full">View Policy</Button>
             </CardContent>
           </Card>
+
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardHeader className="text-center">
+              <Shield className="h-12 w-12 text-purple-600 mx-auto mb-2" />
+              <CardTitle>Support</CardTitle>
+              <CardDescription>
+                Get help with your claims or policy questions
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Link to="/support">
+                <Button variant="outline" className="w-full">Get Support</Button>
+              </Link>
+            </CardContent>
+          </Card>
         </div>
 
-        {/* Recent Claims */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent Claims</CardTitle>
-            <CardDescription>
-              Your latest insurance claim submissions
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {recentClaims.map((claim) => (
-                <div key={claim.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50">
-                  <div className="flex items-center space-x-4">
-                    {getStatusIcon(claim.status)}
-                    <div>
-                      <h3 className="font-semibold text-gray-900">{claim.id}</h3>
-                      <p className="text-sm text-gray-600">{claim.type}</p>
-                      <p className="text-xs text-gray-500">Submitted on {claim.date}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-4">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(claim.status)}`}>
-                      {claim.status}
-                    </span>
-                    <span className="text-lg font-semibold text-gray-900">{claim.amount}</span>
-                    <Button variant="ghost" size="sm">
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        {/* Claims Table */}
+        <ClaimsTable />
       </div>
     </div>
   );
