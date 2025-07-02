@@ -3,8 +3,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Shield, Plus, FileText, Clock, CheckCircle, AlertTriangle, Eye } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Dashboard = () => {
+  const { user, signOut } = useAuth();
+
   // Mock data for demonstration
   const recentClaims = [
     { id: "CLM-001", type: "Vehicle Damage", status: "Under Review", date: "2024-01-15", amount: "$2,500" },
@@ -38,6 +41,10 @@ const Dashboard = () => {
     }
   };
 
+  const handleSignOut = async () => {
+    await signOut();
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Navigation */}
@@ -49,9 +56,9 @@ const Dashboard = () => {
               <span className="text-xl font-bold text-gray-900">InsuroAI</span>
             </div>
             <div className="flex items-center space-x-4">
-              <span className="text-gray-700">Welcome, John Doe</span>
-              <Button variant="outline" size="sm">
-                Logout
+              <span className="text-gray-700">Welcome, {user?.user_metadata?.first_name || user?.email}</span>
+              <Button variant="outline" size="sm" onClick={handleSignOut}>
+                Sign Out
               </Button>
             </div>
           </div>

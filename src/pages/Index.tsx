@@ -14,23 +14,15 @@ const Index = () => {
               <Shield className="h-8 w-8 text-blue-600 mr-2" />
               <span className="text-xl font-bold text-gray-900">InsuroAI</span>
             </div>
-            <div className="hidden md:flex space-x-8">
-              <Link to="/" className="text-gray-700 hover:text-blue-600 font-medium">
-                Home
+            <div className="hidden md:flex items-center space-x-8">
+              <Link to="/features" className="text-gray-600 hover:text-gray-900">Features</Link>
+              <Link to="/about" className="text-gray-600 hover:text-gray-900">About</Link>
+              <Link to="/contact" className="text-gray-600 hover:text-gray-900">Contact</Link>
+              <Link to="/auth">
+                <Button variant="outline" size="sm">Sign In</Button>
               </Link>
-              <Link to="/about" className="text-gray-700 hover:text-blue-600 font-medium">
-                About
-              </Link>
-              <Link to="/contact" className="text-gray-700 hover:text-blue-600 font-medium">
-                Contact
-              </Link>
-            </div>
-            <div className="flex space-x-4">
-              <Link to="/login">
-                <Button variant="ghost">Login</Button>
-              </Link>
-              <Link to="/register">
-                <Button>Get Started</Button>
+              <Link to="/auth">
+                <Button size="sm">Get Started</Button>
               </Link>
             </div>
           </div>
@@ -131,6 +123,30 @@ const Index = () => {
                 </CardDescription>
               </CardContent>
             </Card>
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="py-20 bg-blue-600">
+        <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
+          <h2 className="text-3xl font-bold text-white mb-4">
+            Ready to Simplify Your Claims?
+          </h2>
+          <p className="text-xl text-blue-100 mb-8">
+            Join thousands of satisfied customers who trust InsuroAI with their insurance claims.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Link to="/auth">
+              <Button size="lg" variant="secondary" className="bg-white text-blue-600 hover:bg-gray-100">
+                Get Started Free
+              </Button>
+            </Link>
+            <Link to="/features">
+              <Button size="lg" variant="outline" className="border-white text-white hover:bg-white hover:text-blue-600">
+                Learn More
+              </Button>
+            </Link>
           </div>
         </div>
       </section>
