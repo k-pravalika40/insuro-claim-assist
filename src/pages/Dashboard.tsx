@@ -1,7 +1,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Shield, Plus, FileText } from "lucide-react";
+import { Shield, Plus, FileText, User } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import ClaimsTable from "@/components/ClaimsTable";
@@ -25,6 +25,12 @@ const Dashboard = () => {
             </div>
             <div className="flex items-center space-x-4">
               <span className="text-gray-700">Welcome, {user?.user_metadata?.first_name || user?.email}</span>
+              <Link to="/profile">
+                <Button variant="outline" size="sm">
+                  <User className="h-4 w-4 mr-2" />
+                  Profile
+                </Button>
+              </Link>
               <Button variant="outline" size="sm" onClick={handleSignOut}>
                 Sign Out
               </Button>
@@ -59,14 +65,16 @@ const Dashboard = () => {
 
           <Card className="hover:shadow-lg transition-shadow">
             <CardHeader className="text-center">
-              <FileText className="h-12 w-12 text-green-600 mx-auto mb-2" />
-              <CardTitle>Policy Information</CardTitle>
+              <User className="h-12 w-12 text-green-600 mx-auto mb-2" />
+              <CardTitle>Profile Settings</CardTitle>
               <CardDescription>
-                View your policy details and coverage information
+                Update your personal information and preferences
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button variant="outline" className="w-full">View Policy</Button>
+              <Link to="/profile">
+                <Button variant="outline" className="w-full">Manage Profile</Button>
+              </Link>
             </CardContent>
           </Card>
 

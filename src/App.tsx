@@ -12,6 +12,8 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import SubmitClaim from "./pages/SubmitClaim";
+import ClaimDetails from "./pages/ClaimDetails";
+import Profile from "./pages/Profile";
 import About from "./pages/About";
 import Contact from "./pages/Contact";
 import Product from "./pages/Product";
@@ -42,6 +44,16 @@ const App = () => (
             <Route path="/submit-claim" element={
               <ProtectedRoute>
                 <SubmitClaim />
+              </ProtectedRoute>
+            } />
+            <Route path="/claim/:id" element={
+              <ProtectedRoute>
+                <ClaimDetails />
+              </ProtectedRoute>
+            } />
+            <Route path="/profile" element={
+              <ProtectedRoute>
+                <Profile />
               </ProtectedRoute>
             } />
             <Route path="/about" element={<About />} />

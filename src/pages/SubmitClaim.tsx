@@ -1,9 +1,11 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Shield, ArrowLeft } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 import PersonalInformationStep from "@/components/claim-form/PersonalInformationStep";
 import VehicleInformationStep from "@/components/claim-form/VehicleInformationStep";
 import IncidentDetailsStep from "@/components/claim-form/IncidentDetailsStep";
@@ -12,6 +14,10 @@ import ClaimFormProgress from "@/components/claim-form/ClaimFormProgress";
 import ClaimFormNavigation from "@/components/claim-form/ClaimFormNavigation";
 
 const SubmitClaim = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  
   const [currentStep, setCurrentStep] = useState(1);
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -58,6 +64,35 @@ const SubmitClaim = () => {
     setUploadedFiles(prev => prev.filter((_, i) => i !== index));
   };
 
+  const uploadFilesToStorage = async (claimId: string) => {
+    const uploadPromises = uploadedFiles.map(async (file) => {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${claimId}/${Date.now()}.${fileExt}`;
+      
+      const { data, error } = await supabase.storage
+        .from('claim-images')
+        .upload(fileName, file);
+
+      if (error) throw error;
+
+      // Save file reference to database
+      const { error: dbError } = await supabase
+        .from('files')
+        .insert({
+          user_id: user?.id,
+          claim_id: claimId,
+          file_url: data.path,
+          file_type: file.type
+        });
+
+      if (dbError) throw dbError;
+      
+      return data.path;
+    });
+
+    return Promise.all(uploadPromises);
+  };
+
   const nextStep = () => {
     if (currentStep < totalSteps) setCurrentStep(currentStep + 1);
   };
@@ -68,16 +103,54 @@ const SubmitClaim = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to submit a claim.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsSubmitting(true);
     
     try {
-      console.log("Claim submission:", { formData, uploadedFiles });
-      // TODO: Implement actual claim submission logic
-      await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate API call
-      alert("Claim submitted successfully!");
+      // Create claim in database
+      const { data: claim, error: claimError } = await supabase
+        .from('claims')
+        .insert({
+          user_id: user.id,
+          claim_type: formData.claimType,
+          incident_date: formData.incidentDate,
+          description: formData.description,
+          vehicle_number: formData.vehiclePlate,
+          status: 'Pending'
+        })
+        .select()
+        .single();
+
+      if (claimError) throw claimError;
+
+      // Upload files if any
+      if (uploadedFiles.length > 0) {
+        await uploadFilesToStorage(claim.id);
+      }
+
+      toast({
+        title: "Claim Submitted Successfully!",
+        description: "Your claim has been submitted and is under review.",
+      });
+
+      // Navigate to dashboard
+      navigate('/dashboard');
+      
     } catch (error) {
       console.error("Error submitting claim:", error);
-      alert("Error submitting claim. Please try again.");
+      toast({
+        title: "Submission Failed",
+        description: "There was an error submitting your claim. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setIsSubmitting(false);
     }
