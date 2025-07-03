@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Shield, ArrowLeft, Users, FileText, CheckCircle, XCircle, Clock, TrendingUp } from "lucide-react";
+import { Shield, ArrowLeft, Users, FileText, CheckCircle, Clock, TrendingUp } from "lucide-react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -28,6 +28,38 @@ const AdminDashboard = () => {
     fetchAdminData();
   }, []);
 
+  const calculateStats = (claimsData: Claim[]): AdminStats => {
+    const total = claimsData.length;
+    const pending = claimsData.filter(c => c.status === 'Pending').length;
+    const approved = claimsData.filter(c => c.status === 'Approved').length;
+    const rejected = claimsData.filter(c => c.status === 'Rejected').length;
+    
+    // Calculate average processing days for approved claims
+    const approvedClaims = claimsData.filter(c => c.status === 'Approved');
+    let avgDays = 0;
+    if (approvedClaims.length > 0) {
+      const totalDays = approvedClaims.reduce((sum, claim) => {
+        if (claim.created_at) {
+          const created = new Date(claim.created_at);
+          const now = new Date();
+          const diffTime = Math.abs(now.getTime() - created.getTime());
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+          return sum + diffDays;
+        }
+        return sum;
+      }, 0);
+      avgDays = totalDays / approvedClaims.length;
+    }
+
+    return {
+      total_claims: total,
+      pending_claims: pending,
+      approved_claims: approved,
+      rejected_claims: rejected,
+      avg_processing_days: avgDays
+    };
+  };
+
   const fetchAdminData = async () => {
     try {
       setLoading(true);
@@ -40,16 +72,12 @@ const AdminDashboard = () => {
 
       if (claimsError) throw claimsError;
 
-      // Fetch admin stats
-      const { data: statsData, error: statsError } = await supabase
-        .from('admin_claim_stats')
-        .select('*')
-        .single();
-
-      if (statsError) throw statsError;
-
-      setClaims(claimsData || []);
-      setStats(statsData);
+      const claimsArray = claimsData || [];
+      setClaims(claimsArray);
+      
+      // Calculate stats from claims data
+      const calculatedStats = calculateStats(claimsArray);
+      setStats(calculatedStats);
     } catch (error) {
       console.error('Error fetching admin data:', error);
       toast({
@@ -66,10 +94,7 @@ const AdminDashboard = () => {
     try {
       const { error } = await supabase
         .from('claims')
-        .update({ 
-          status: newStatus,
-          updated_at: new Date().toISOString()
-        })
+        .update({ status: newStatus })
         .eq('id', claimId);
 
       if (error) throw error;

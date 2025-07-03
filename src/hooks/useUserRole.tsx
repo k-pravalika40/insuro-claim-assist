@@ -16,17 +16,10 @@ export const useUserRole = () => {
       }
 
       try {
-        const { data, error } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', user.id)
-          .single();
-
-        if (error && error.code !== 'PGRST116') {
-          throw error;
-        }
-
-        setRole(data?.role || 'user');
+        // For now, we'll use a simple check - you can expand this later
+        // Check if user email contains 'admin' or use another method
+        const isAdmin = user.email?.includes('admin') || false;
+        setRole(isAdmin ? 'admin' : 'user');
       } catch (error) {
         console.error('Error fetching user role:', error);
         setRole('user');
