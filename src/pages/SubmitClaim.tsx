@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon } from "@radix-ui/react-icons";
+import { CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
@@ -73,53 +74,6 @@ const SubmitClaim = () => {
     }
   };
 
-  const uploadFile = async () => {
-    if (!selectedFile) {
-      toast({
-        title: "No File Selected",
-        description: "Please select a file to upload.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsUploading(true);
-    try {
-      const fileExt = selectedFile.name.split('.').pop();
-      const filePath = `claims/${user?.id}/${Date.now()}.${fileExt}`;
-
-      const { data, error } = await supabase.storage
-        .from('claim-documents')
-        .upload(filePath, selectedFile, {
-          cacheControl: '3600',
-          upsert: false
-        });
-
-      if (error) {
-        throw error;
-      }
-
-      const publicUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/${data.Key}`;
-      setUploadedFileUrl(publicUrl);
-
-      toast({
-        title: "File Uploaded!",
-        description: "Your file has been successfully uploaded.",
-      });
-
-    } catch (error: any) {
-      console.error("File upload error:", error);
-      toast({
-        title: "File Upload Failed",
-        description: error.message || "Failed to upload file. Please try again.",
-        variant: "destructive",
-      });
-      setUploadedFileUrl(null);
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -154,26 +108,23 @@ const SubmitClaim = () => {
           throw uploadError;
         }
 
-        uploadedFileUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/${uploadData.Key}`;
+        const { data: { publicUrl } } = supabase.storage
+          .from('claim-documents')
+          .getPublicUrl(uploadData.path);
+        
+        uploadedFileUrl = publicUrl;
       }
 
-      // Submit claim to database
+      // Submit claim to database - using the 'claims' table (lowercase)
       const { data: claimData, error: claimError } = await supabase
-        .from('Claims')
+        .from('claims')
         .insert({
-          user_uuid: user.id,
+          user_id: user.id,
           claim_type: formData.claimType,
           description: formData.description,
-          incident_date: formData.incidentDate,
-          incident_time: formData.incidentTime,
-          incident_location: formData.incidentLocation,
-          vehicle_make: formData.vehicleMake,
-          vehicle_model: formData.vehicleModel,
-          policy_number: formData.policyNumber,
-          damage_score: 0,
-          fraud_score: 0,
-          settlement_amount: 0,
-          status: 'Pending Review'
+          incident_date: formData.incidentDate.toISOString().split('T')[0],
+          damage_image_url: uploadedFileUrl,
+          status: 'Pending'
         })
         .select()
         .single();
@@ -184,10 +135,11 @@ const SubmitClaim = () => {
 
       if (uploadedFileUrl) {
         const { error: fileAssociationError } = await supabase
-          .from('ClaimDocuments')
+          .from('files')
           .insert({
             claim_id: claimId,
             file_url: uploadedFileUrl,
+            user_id: user.id,
           });
 
         if (fileAssociationError) {
@@ -219,7 +171,7 @@ const SubmitClaim = () => {
           incidentLocation: formData.incidentLocation,
           damageImageUrl: uploadedFileUrl
         });
-      }, 2000); // Small delay to ensure claim is fully processed
+      }, 2000);
 
       toast({
         title: "Claim Submitted Successfully!",

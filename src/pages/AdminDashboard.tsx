@@ -3,12 +3,15 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Shield, ArrowLeft, Users, FileText, CheckCircle, Clock, TrendingUp } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Shield, ArrowLeft, Users, FileText, BarChart3 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useEmailNotifications } from "@/hooks/useEmailNotifications";
 import { Claim } from "@/hooks/useClaims";
+import AdminAnalytics from "@/components/AdminAnalytics";
+import BulkActions from "@/components/BulkActions";
 
 interface AdminStats {
   total_claims: number;
@@ -209,129 +212,204 @@ const AdminDashboard = () => {
           <p className="text-gray-600">Manage claims and monitor system performance</p>
         </div>
 
-        {/* Stats Cards */}
-        {stats && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Claims</CardTitle>
-                <FileText className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.total_claims}</div>
-              </CardContent>
-            </Card>
+        <Tabs defaultValue="overview" className="space-y-6">
+          <TabsList>
+            <TabsTrigger value="overview" className="flex items-center">
+              <Users className="h-4 w-4 mr-2" />
+              Overview
+            </TabsTrigger>
+            <TabsTrigger value="analytics" className="flex items-center">
+              <BarChart3 className="h-4 w-4 mr-2" />
+              Analytics
+            </TabsTrigger>
+            <TabsTrigger value="claims" className="flex items-center">
+              <FileText className="h-4 w-4 mr-2" />
+              Claims Management
+            </TabsTrigger>
+          </TabsList>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Pending</CardTitle>
-                <Clock className="h-4 w-4 text-yellow-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-yellow-600">{stats.pending_claims}</div>
-              </CardContent>
-            </Card>
+          <TabsContent value="overview">
+            {/* Stats Cards */}
+            {stats && (
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Total Claims</CardTitle>
+                    <FileText className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{stats.total_claims}</div>
+                  </CardContent>
+                </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Approved</CardTitle>
-                <CheckCircle className="h-4 w-4 text-green-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-green-600">{stats.approved_claims}</div>
-              </CardContent>
-            </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Pending</CardTitle>
+                    <Clock className="h-4 w-4 text-yellow-600" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-yellow-600">{stats.pending_claims}</div>
+                  </CardContent>
+                </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Avg Processing</CardTitle>
-                <TrendingUp className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{Math.round(stats.avg_processing_days || 0)} days</div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Approved</CardTitle>
+                    <CheckCircle className="h-4 w-4 text-green-600" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-green-600">{stats.approved_claims}</div>
+                  </CardContent>
+                </Card>
 
-        {/* Claims Management */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <Users className="h-5 w-5 mr-2" />
-              All Claims
-            </CardTitle>
-            <CardDescription>Manage and process insurance claims</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {claims.length === 0 ? (
-              <div className="text-center py-8">
-                <p className="text-gray-500">No claims found</p>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Avg Processing</CardTitle>
+                    <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{Math.round(stats.avg_processing_days || 0)} days</div>
+                  </CardContent>
+                </Card>
               </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Claim ID</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Vehicle</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {claims.map((claim) => (
-                      <TableRow key={claim.id}>
-                        <TableCell className="font-mono text-sm">
-                          {claim.id.substring(0, 8)}...
-                        </TableCell>
-                        <TableCell>{claim.claim_type || 'N/A'}</TableCell>
-                        <TableCell>{claim.vehicle_number || 'N/A'}</TableCell>
-                        <TableCell>{formatDate(claim.incident_date)}</TableCell>
-                        <TableCell>
-                          <Badge className={getStatusColor(claim.status)}>
-                            {claim.status || 'Unknown'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex space-x-2">
+            )}
+
+            {/* Recent Claims */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Recent Claims</CardTitle>
+                <CardDescription>Latest submitted claims requiring attention</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Claim ID</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {claims.slice(0, 5).map((claim) => (
+                        <TableRow key={claim.id}>
+                          <TableCell className="font-mono text-sm">
+                            {claim.id.substring(0, 8)}...
+                          </TableCell>
+                          <TableCell>{claim.claim_type || 'N/A'}</TableCell>
+                          <TableCell>{formatDate(claim.incident_date)}</TableCell>
+                          <TableCell>
+                            <Badge className={getStatusColor(claim.status)}>
+                              {claim.status || 'Unknown'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
                             <Link to={`/claim/${claim.id}`}>
                               <Button variant="outline" size="sm">
                                 View
                               </Button>
                             </Link>
-                            {claim.status === 'Pending' && (
-                              <>
-                                <Button
-                                  size="sm"
-                                  className="bg-green-600 hover:bg-green-700"
-                                  onClick={() => updateClaimStatus(claim.id, 'Approved')}
-                                  disabled={updatingClaim === claim.id}
-                                >
-                                  {updatingClaim === claim.id ? 'Updating...' : 'Approve'}
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="destructive"
-                                  onClick={() => updateClaimStatus(claim.id, 'Rejected')}
-                                  disabled={updatingClaim === claim.id}
-                                >
-                                  {updatingClaim === claim.id ? 'Updating...' : 'Reject'}
-                                </Button>
-                              </>
-                            )}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="analytics">
+            <AdminAnalytics claims={claims} />
+          </TabsContent>
+
+          <TabsContent value="claims">
+            <div className="space-y-6">
+              <BulkActions claims={claims} onUpdate={fetchAdminData} />
+              
+              {/* Claims Management */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <Users className="h-5 w-5 mr-2" />
+                    All Claims
+                  </CardTitle>
+                  <CardDescription>Manage and process insurance claims</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {claims.length === 0 ? (
+                    <div className="text-center py-8">
+                      <p className="text-gray-500">No claims found</p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Claim ID</TableHead>
+                            <TableHead>Type</TableHead>
+                            <TableHead>Vehicle</TableHead>
+                            <TableHead>Date</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {claims.map((claim) => (
+                            <TableRow key={claim.id}>
+                              <TableCell className="font-mono text-sm">
+                                {claim.id.substring(0, 8)}...
+                              </TableCell>
+                              <TableCell>{claim.claim_type || 'N/A'}</TableCell>
+                              <TableCell>{claim.vehicle_number || 'N/A'}</TableCell>
+                              <TableCell>{formatDate(claim.incident_date)}</TableCell>
+                              <TableCell>
+                                <Badge className={getStatusColor(claim.status)}>
+                                  {claim.status || 'Unknown'}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex space-x-2">
+                                  <Link to={`/claim/${claim.id}`}>
+                                    <Button variant="outline" size="sm">
+                                      View
+                                    </Button>
+                                  </Link>
+                                  {claim.status === 'Pending' && (
+                                    <>
+                                      <Button
+                                        size="sm"
+                                        className="bg-green-600 hover:bg-green-700"
+                                        onClick={() => updateClaimStatus(claim.id, 'Approved')}
+                                        disabled={updatingClaim === claim.id}
+                                      >
+                                        {updatingClaim === claim.id ? 'Updating...' : 'Approve'}
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="destructive"
+                                        onClick={() => updateClaimStatus(claim.id, 'Rejected')}
+                                        disabled={updatingClaim === claim.id}
+                                      >
+                                        {updatingClaim === claim.id ? 'Updating...' : 'Reject'}
+                                      </Button>
+                                    </>
+                                  )}
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );

@@ -1,26 +1,16 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User, Session, AuthChangeEvent } from '@supabase/supabase-js';
+import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<{ error: any }>;
-  signUp: (email: string, password: string, firstName: string, lastName: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -28,22 +18,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Set up auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event: AuthChangeEvent, session: Session | null) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
-
-        // Send welcome email for new signups
-        if (event === 'SIGNED_UP' && session?.user) {
-          setTimeout(() => {
-            sendWelcomeEmail(session.user);
-          }, 1000);
-        }
-      }
-    );
-
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
@@ -51,64 +25,56 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
-  }, []);
+    // Listen for auth changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth event:', event);
+      setSession(session);
+      setUser(session?.user ?? null);
+      setLoading(false);
 
-  const sendWelcomeEmail = async (user: User) => {
-    try {
-      const userName = user.user_metadata?.first_name || 
-                      user.user_metadata?.full_name || 
-                      user.email?.split('@')[0];
+      // Handle user registration
+      if (event === 'SIGNED_UP' && session?.user) {
+        console.log('New user signed up:', session.user.id);
+        
+        // Create user profile
+        const { error } = await supabase
+          .from('users')
+          .insert({
+            id: session.user.id,
+            email: session.user.email,
+            full_name: session.user.user_metadata?.full_name || '',
+            created_at: new Date().toISOString(),
+          });
 
-      await supabase.functions.invoke('send-notification-email', {
-        body: {
-          to: user.email,
-          type: 'welcome',
-          data: { userName }
-        }
-      });
-    } catch (error) {
-      console.error('Failed to send welcome email:', error);
-    }
-  };
-
-  const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    return { error };
-  };
-
-  const signUp = async (email: string, password: string, firstName: string, lastName: string) => {
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          first_name: firstName,
-          last_name: lastName,
+        if (error) {
+          console.error('Error creating user profile:', error);
         }
       }
     });
-    return { error };
-  };
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const signOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      console.error('Error signing out:', error);
-    }
+    await supabase.auth.signOut();
   };
 
   const value = {
     user,
     session,
     loading,
-    signIn,
-    signUp,
     signOut,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+};
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
 };

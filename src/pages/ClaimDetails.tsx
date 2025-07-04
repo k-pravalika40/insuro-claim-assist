@@ -8,6 +8,8 @@ import { Shield, ArrowLeft, Calendar, MapPin, Car, FileText } from "lucide-react
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import type { Claim } from "@/hooks/useClaims";
+import ClaimTimeline from "@/components/ClaimTimeline";
+import ImageViewer from "@/components/ImageViewer";
 
 interface ClaimFile {
   id: string;
@@ -73,6 +75,28 @@ const ClaimDetails = () => {
     return new Date(dateString).toLocaleDateString();
   };
 
+  // Mock timeline data - in real app, this would come from database
+  const timelineEvents = claim ? [
+    {
+      id: '1',
+      status: 'Submitted',
+      timestamp: claim.created_at || new Date().toISOString(),
+      description: 'Claim submitted and received'
+    },
+    {
+      id: '2',
+      status: 'Under Review',
+      timestamp: claim.created_at || new Date().toISOString(),
+      description: 'AI processing completed, manual review in progress'
+    },
+    ...(claim.status === 'Approved' || claim.status === 'Rejected' ? [{
+      id: '3',
+      status: claim.status,
+      timestamp: claim.created_at || new Date().toISOString(),
+      description: `Claim ${claim.status.toLowerCase()}`
+    }] : [])
+  ] : [];
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -117,7 +141,7 @@ const ClaimDetails = () => {
         </div>
       </nav>
 
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between">
@@ -129,87 +153,77 @@ const ClaimDetails = () => {
           <p className="text-gray-600 mt-2">Claim ID: {claim.id}</p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Claim Information */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <FileText className="h-5 w-5 mr-2" />
-                Claim Information
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <label className="text-sm font-medium text-gray-500">Claim Type</label>
-                <p className="text-gray-900">{claim.claim_type || 'N/A'}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-500">Description</label>
-                <p className="text-gray-900">{claim.description || 'No description provided'}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-500">Vehicle Number</label>
-                <p className="text-gray-900">{claim.vehicle_number || 'N/A'}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-500">Status</label>
-                <p className="text-gray-900">{claim.status || 'N/A'}</p>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Incident Details */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <Calendar className="h-5 w-5 mr-2" />
-                Incident Details
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <label className="text-sm font-medium text-gray-500">Incident Date</label>
-                <p className="text-gray-900">{formatDate(claim.incident_date)}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-500">Submitted On</label>
-                <p className="text-gray-900">{formatDate(claim.created_at)}</p>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Uploaded Documents */}
-          <Card className="lg:col-span-2">
-            <CardHeader>
-              <CardTitle>Uploaded Documents</CardTitle>
-              <CardDescription>
-                Files and images submitted with this claim
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {files.length === 0 ? (
-                <p className="text-gray-500 text-center py-8">No documents uploaded</p>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {files.map((file) => (
-                    <div key={file.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
-                      <div className="flex items-center space-x-3">
-                        <FileText className="h-8 w-8 text-blue-600" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900 truncate">
-                            {file.file_url.split('/').pop()}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {formatDate(file.uploaded_at)}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-6">
+            {/* Claim Information */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <FileText className="h-5 w-5 mr-2" />
+                  Claim Information
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Claim Type</label>
+                  <p className="text-gray-900">{claim.claim_type || 'N/A'}</p>
                 </div>
-              )}
-            </CardContent>
-          </Card>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Description</label>
+                  <p className="text-gray-900">{claim.description || 'No description provided'}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Vehicle Number</label>
+                  <p className="text-gray-900">{claim.vehicle_number || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Incident Date</label>
+                  <p className="text-gray-900">{formatDate(claim.incident_date)}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Submitted On</label>
+                  <p className="text-gray-900">{formatDate(claim.created_at)}</p>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Uploaded Documents */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Uploaded Documents</CardTitle>
+                <CardDescription>
+                  Files and images submitted with this claim
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {files.length === 0 ? (
+                  <p className="text-gray-500 text-center py-8">No documents uploaded</p>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {files.map((file) => (
+                      <ImageViewer
+                        key={file.id}
+                        imageUrl={file.file_url}
+                        fileName={file.file_url.split('/').pop() || 'Document'}
+                      />
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Timeline Sidebar */}
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Status Timeline</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ClaimTimeline events={timelineEvents} currentStatus={claim.status || 'Unknown'} />
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
     </div>
