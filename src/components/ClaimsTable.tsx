@@ -1,14 +1,27 @@
 
-import { Link } from "react-router-dom";
+import { useState } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Eye, FileText } from "lucide-react";
+import { FileText, Plus } from "lucide-react";
+import { Link } from "react-router-dom";
 import { useClaims } from "@/hooks/useClaims";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
+import { EmptyState } from "@/components/EmptyState";
+import { SearchInput } from "@/components/SearchInput";
+import { useDebounce } from "@/hooks/useDebounce";
 
 const ClaimsTable = () => {
   const { claims, loading, error } = useClaims();
+  const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
+
+  const filteredClaims = claims.filter(claim => 
+    claim.claim_type?.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+    claim.vehicle_number?.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+    claim.status?.toLowerCase().includes(debouncedSearchQuery.toLowerCase())
+  );
 
   const getStatusColor = (status: string | null) => {
     switch (status?.toLowerCase()) {
@@ -34,15 +47,11 @@ const ClaimsTable = () => {
         <CardHeader>
           <CardTitle className="flex items-center">
             <FileText className="h-5 w-5 mr-2" />
-            Your Claims
+            My Claims
           </CardTitle>
-          <CardDescription>Track the status of your insurance claims</CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            <span className="ml-2 text-gray-600">Loading claims...</span>
-          </div>
+        <CardContent className="flex justify-center py-8">
+          <LoadingSpinner />
         </CardContent>
       </Card>
     );
@@ -54,13 +63,12 @@ const ClaimsTable = () => {
         <CardHeader>
           <CardTitle className="flex items-center">
             <FileText className="h-5 w-5 mr-2" />
-            Your Claims
+            My Claims
           </CardTitle>
-          <CardDescription>Track the status of your insurance claims</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="text-center py-8">
-            <p className="text-red-600">Error loading claims: {error}</p>
+            <p className="text-red-600">Error loading claims: {error.message}</p>
           </div>
         </CardContent>
       </Card>
@@ -72,18 +80,40 @@ const ClaimsTable = () => {
       <CardHeader>
         <CardTitle className="flex items-center">
           <FileText className="h-5 w-5 mr-2" />
-          Your Claims
+          My Claims
         </CardTitle>
-        <CardDescription>Track the status of your insurance claims</CardDescription>
+        <CardDescription>
+          Track and manage your insurance claims
+        </CardDescription>
+        <div className="flex justify-between items-center mt-4">
+          <SearchInput
+            placeholder="Search claims..."
+            onSearch={setSearchQuery}
+            className="max-w-sm"
+          />
+          <Link to="/submit-claim">
+            <Button className="inline-flex items-center">
+              <Plus className="h-4 w-4 mr-2" />
+              New Claim
+            </Button>
+          </Link>
+        </div>
       </CardHeader>
       <CardContent>
         {claims.length === 0 ? (
-          <div className="text-center py-8">
-            <p className="text-gray-500 mb-4">No claims submitted yet</p>
-            <Link to="/submit-claim">
-              <Button>Submit Your First Claim</Button>
-            </Link>
-          </div>
+          <EmptyState
+            title="No claims found"
+            description="You haven't submitted any insurance claims yet. Get started by submitting your first claim."
+            actionLabel="Submit First Claim"
+            onAction={() => window.location.href = '/submit-claim'}
+            icon={<FileText className="h-12 w-12" />}
+          />
+        ) : filteredClaims.length === 0 ? (
+          <EmptyState
+            title="No matching claims"
+            description="No claims match your search criteria. Try adjusting your search terms."
+            icon={<FileText className="h-12 w-12" />}
+          />
         ) : (
           <div className="overflow-x-auto">
             <Table>
@@ -92,13 +122,13 @@ const ClaimsTable = () => {
                   <TableHead>Claim ID</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead>Vehicle</TableHead>
-                  <TableHead>Incident Date</TableHead>
+                  <TableHead>Date</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {claims.map((claim) => (
+                {filteredClaims.map((claim) => (
                   <TableRow key={claim.id}>
                     <TableCell className="font-mono text-sm">
                       {claim.id.substring(0, 8)}...
@@ -114,8 +144,7 @@ const ClaimsTable = () => {
                     <TableCell>
                       <Link to={`/claim/${claim.id}`}>
                         <Button variant="outline" size="sm">
-                          <Eye className="h-4 w-4 mr-2" />
-                          View
+                          View Details
                         </Button>
                       </Link>
                     </TableCell>

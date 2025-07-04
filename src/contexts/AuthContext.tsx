@@ -36,7 +36,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(session?.user ?? null);
       setLoading(false);
 
-      // Handle user registration
+      // Handle user registration - fix the comparison
       if (event === 'SIGNED_UP' && session?.user) {
         console.log('New user signed up:', session.user.id);
         
