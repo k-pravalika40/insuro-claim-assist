@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,6 +7,7 @@ import { Shield, ArrowLeft, Users, FileText, CheckCircle, Clock, TrendingUp } fr
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useEmailNotifications } from "@/hooks/useEmailNotifications";
 import { Claim } from "@/hooks/useClaims";
 
 interface AdminStats {
@@ -20,9 +20,11 @@ interface AdminStats {
 
 const AdminDashboard = () => {
   const { toast } = useToast();
+  const { sendClaimStatusUpdate } = useEmailNotifications();
   const [claims, setClaims] = useState<Claim[]>([]);
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [updatingClaim, setUpdatingClaim] = useState<string | null>(null);
 
   useEffect(() => {
     fetchAdminData();
@@ -92,6 +94,25 @@ const AdminDashboard = () => {
 
   const updateClaimStatus = async (claimId: string, newStatus: string) => {
     try {
+      setUpdatingClaim(claimId);
+      
+      // First, get the claim details including user email
+      const { data: claimData, error: claimError } = await supabase
+        .from('claims')
+        .select('*, user_id')
+        .eq('id', claimId)
+        .single();
+
+      if (claimError) throw claimError;
+
+      // Get user email from auth.users
+      const { data: userData, error: userError } = await supabase.auth.admin.getUserById(claimData.user_id);
+      
+      if (userError) {
+        console.warn('Could not fetch user data for email notification:', userError);
+      }
+
+      // Update claim status
       const { error } = await supabase
         .from('claims')
         .update({ status: newStatus })
@@ -104,6 +125,21 @@ const AdminDashboard = () => {
         description: `Claim status updated to ${newStatus}`,
       });
 
+      // Send email notification if we have user email
+      if (userData?.user?.email) {
+        const userName = userData.user.user_metadata?.first_name || 
+                        userData.user.user_metadata?.full_name || 
+                        userData.user.email.split('@')[0];
+        
+        await sendClaimStatusUpdate(
+          userData.user.email,
+          claimId,
+          newStatus,
+          claimData.claim_type,
+          userName
+        );
+      }
+
       fetchAdminData();
     } catch (error) {
       console.error('Error updating claim status:', error);
@@ -112,6 +148,8 @@ const AdminDashboard = () => {
         description: "Failed to update claim status",
         variant: "destructive",
       });
+    } finally {
+      setUpdatingClaim(null);
     }
   };
 
@@ -270,15 +308,17 @@ const AdminDashboard = () => {
                                   size="sm"
                                   className="bg-green-600 hover:bg-green-700"
                                   onClick={() => updateClaimStatus(claim.id, 'Approved')}
+                                  disabled={updatingClaim === claim.id}
                                 >
-                                  Approve
+                                  {updatingClaim === claim.id ? 'Updating...' : 'Approve'}
                                 </Button>
                                 <Button
                                   size="sm"
                                   variant="destructive"
                                   onClick={() => updateClaimStatus(claim.id, 'Rejected')}
+                                  disabled={updatingClaim === claim.id}
                                 >
-                                  Reject
+                                  {updatingClaim === claim.id ? 'Updating...' : 'Reject'}
                                 </Button>
                               </>
                             )}

@@ -34,6 +34,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
+
+        // Send welcome email for new signups
+        if (event === 'SIGNED_UP' && session?.user) {
+          setTimeout(() => {
+            sendWelcomeEmail(session.user);
+          }, 1000);
+        }
       }
     );
 
@@ -46,6 +53,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     return () => subscription.unsubscribe();
   }, []);
+
+  const sendWelcomeEmail = async (user: User) => {
+    try {
+      const userName = user.user_metadata?.first_name || 
+                      user.user_metadata?.full_name || 
+                      user.email?.split('@')[0];
+
+      await supabase.functions.invoke('send-notification-email', {
+        body: {
+          to: user.email,
+          type: 'welcome',
+          data: { userName }
+        }
+      });
+    } catch (error) {
+      console.error('Failed to send welcome email:', error);
+    }
+  };
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({
