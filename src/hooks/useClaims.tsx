@@ -18,7 +18,7 @@ export const useClaims = () => {
   const { user } = useAuth();
   const [claims, setClaims] = useState<Claim[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<Error | null>(null);
 
   const fetchClaims = async () => {
     if (!user) {
@@ -28,6 +28,7 @@ export const useClaims = () => {
 
     try {
       setLoading(true);
+      setError(null);
       const { data, error } = await supabase
         .from('claims')
         .select('*')
@@ -37,7 +38,7 @@ export const useClaims = () => {
       if (error) throw error;
       setClaims(data || []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch claims');
+      setError(err instanceof Error ? err : new Error('Failed to fetch claims'));
     } finally {
       setLoading(false);
     }
