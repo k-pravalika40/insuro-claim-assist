@@ -86,11 +86,24 @@ const SubmitClaim = () => {
       return;
     }
 
+    // Validate required fields
+    if (!formData.claimType || !formData.description || !formData.policyNumber) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill in all required fields.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
+      console.log('Starting claim submission for user:', user.id);
+      
       let uploadedFileUrl = null;
       if (selectedFile) {
+        console.log('Uploading file:', selectedFile.name);
         setIsUploading(true);
         const fileExt = selectedFile.name.split('.').pop();
         const filePath = `claims/${user?.id}/${Date.now()}.${fileExt}`;
@@ -105,7 +118,8 @@ const SubmitClaim = () => {
         setIsUploading(false);
 
         if (uploadError) {
-          throw uploadError;
+          console.error('File upload error:', uploadError);
+          throw new Error(`File upload failed: ${uploadError.message}`);
         }
 
         const { data: { publicUrl } } = supabase.storage
@@ -113,27 +127,39 @@ const SubmitClaim = () => {
           .getPublicUrl(uploadData.path);
         
         uploadedFileUrl = publicUrl;
+        console.log('File uploaded successfully:', uploadedFileUrl);
       }
 
-      // Submit claim to database - using the 'claims' table (lowercase)
-      const { data: claimData, error: claimError } = await supabase
+      // Prepare claim data
+      const claimData = {
+        user_id: user.id,
+        claim_type: formData.claimType,
+        description: formData.description,
+        incident_date: formData.incidentDate.toISOString().split('T')[0],
+        damage_image_url: uploadedFileUrl,
+        status: 'Pending'
+      };
+
+      console.log('Submitting claim data:', claimData);
+
+      // Submit claim to database
+      const { data: claimRecord, error: claimError } = await supabase
         .from('claims')
-        .insert({
-          user_id: user.id,
-          claim_type: formData.claimType,
-          description: formData.description,
-          incident_date: formData.incidentDate.toISOString().split('T')[0],
-          damage_image_url: uploadedFileUrl,
-          status: 'Pending'
-        })
+        .insert(claimData)
         .select()
         .single();
 
-      if (claimError) throw claimError;
+      if (claimError) {
+        console.error('Claim submission error:', claimError);
+        throw new Error(`Failed to submit claim: ${claimError.message}`);
+      }
 
-      const claimId = claimData.id;
+      console.log('Claim submitted successfully:', claimRecord);
+      const claimId = claimRecord.id;
 
+      // Associate file with claim
       if (uploadedFileUrl) {
+        console.log('Associating file with claim:', claimId);
         const { error: fileAssociationError } = await supabase
           .from('files')
           .insert({
@@ -144,40 +170,52 @@ const SubmitClaim = () => {
 
         if (fileAssociationError) {
           console.error("File association error:", fileAssociationError);
+          // Don't fail the entire claim submission for file association errors
           toast({
-            title: "File Association Error",
-            description: "Failed to associate the uploaded file with the claim.",
-            variant: "destructive",
+            title: "Warning",
+            description: "Claim submitted but file association failed.",
+            variant: "default",
           });
         }
       }
 
-      // Send claim submitted email
-      await sendClaimSubmitted(
-        user.email || '',
-        claimId.toString(),
-        formData.claimType,
-        user.user_metadata?.first_name
-      );
+      // Send notification email
+      try {
+        await sendClaimSubmitted(
+          user.email || '',
+          claimId.toString(),
+          formData.claimType,
+          user.user_metadata?.first_name || 'User'
+        );
+      } catch (emailError) {
+        console.error('Email notification error:', emailError);
+        // Don't fail claim submission for email errors
+      }
 
       // Trigger AI assessment
       setTimeout(async () => {
-        await processClaimWithAI({
-          claimId: claimId.toString(),
-          claimType: formData.claimType,
-          description: formData.description,
-          vehicleMake: formData.vehicleMake,
-          vehicleModel: formData.vehicleModel,
-          incidentLocation: formData.incidentLocation,
-          damageImageUrl: uploadedFileUrl
-        });
+        try {
+          await processClaimWithAI({
+            claimId: claimId.toString(),
+            claimType: formData.claimType,
+            description: formData.description,
+            vehicleMake: formData.vehicleMake,
+            vehicleModel: formData.vehicleModel,
+            incidentLocation: formData.incidentLocation,
+            damageImageUrl: uploadedFileUrl
+          });
+        } catch (aiError) {
+          console.error('AI assessment error:', aiError);
+          // AI assessment failure shouldn't affect claim submission
+        }
       }, 2000);
 
       toast({
         title: "Claim Submitted Successfully!",
-        description: `Your claim #${claimId} has been submitted and is being processed by our AI system.`,
+        description: `Your claim #${claimId} has been submitted and is being processed.`,
       });
 
+      // Reset form
       setFormData({
         claimType: "",
         description: "",
@@ -190,17 +228,20 @@ const SubmitClaim = () => {
       });
       setSelectedFile(null);
       setUploadedFileUrl(null);
+      
+      // Navigate to dashboard
       navigate('/dashboard');
 
     } catch (error: any) {
       console.error("Claim submission error:", error);
       toast({
         title: "Claim Submission Failed",
-        description: error.message || "Failed to submit claim. Please try again.",
+        description: error.message || "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
     } finally {
       setIsSubmitting(false);
+      setIsUploading(false);
     }
   };
 
@@ -217,10 +258,10 @@ const SubmitClaim = () => {
           <CardContent className="p-6">
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <Label htmlFor="claimType">Claim Type</Label>
+                <Label htmlFor="claimType">Claim Type *</Label>
                 <Select onValueChange={(value) => setFormData({ ...formData, claimType: value })}>
                   <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select claim type" defaultValue={formData.claimType} />
+                    <SelectValue placeholder="Select claim type" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Collision">Collision</SelectItem>
@@ -230,8 +271,9 @@ const SubmitClaim = () => {
                   </SelectContent>
                 </Select>
               </div>
+              
               <div>
-                <Label htmlFor="description">Description of Incident</Label>
+                <Label htmlFor="description">Description of Incident *</Label>
                 <Textarea
                   id="description"
                   name="description"
@@ -241,6 +283,7 @@ const SubmitClaim = () => {
                   required
                 />
               </div>
+              
               <div>
                 <Label>Incident Date</Label>
                 <Popover>
@@ -273,6 +316,7 @@ const SubmitClaim = () => {
                   </PopoverContent>
                 </Popover>
               </div>
+              
               <div>
                 <Label htmlFor="incidentTime">Incident Time</Label>
                 <Input
@@ -281,9 +325,9 @@ const SubmitClaim = () => {
                   name="incidentTime"
                   value={formData.incidentTime}
                   onChange={handleInputChange}
-                  required
                 />
               </div>
+              
               <div>
                 <Label htmlFor="incidentLocation">Incident Location</Label>
                 <Input
@@ -293,9 +337,9 @@ const SubmitClaim = () => {
                   placeholder="Where did the incident occur?"
                   value={formData.incidentLocation}
                   onChange={handleInputChange}
-                  required
                 />
               </div>
+              
               <div>
                 <Label htmlFor="vehicleMake">Vehicle Make</Label>
                 <Input
@@ -307,6 +351,7 @@ const SubmitClaim = () => {
                   onChange={handleInputChange}
                 />
               </div>
+              
               <div>
                 <Label htmlFor="vehicleModel">Vehicle Model</Label>
                 <Input
@@ -318,8 +363,9 @@ const SubmitClaim = () => {
                   onChange={handleInputChange}
                 />
               </div>
+              
               <div>
-                <Label htmlFor="policyNumber">Policy Number</Label>
+                <Label htmlFor="policyNumber">Policy Number *</Label>
                 <Input
                   type="text"
                   id="policyNumber"
@@ -330,29 +376,32 @@ const SubmitClaim = () => {
                   required
                 />
               </div>
+              
               <div>
-                <Label htmlFor="fileUpload">Upload Document</Label>
+                <Label htmlFor="fileUpload">Upload Document (Optional)</Label>
                 <Input
                   type="file"
                   id="fileUpload"
                   name="fileUpload"
                   onChange={handleFileSelect}
+                  accept="image/*,.pdf"
                 />
                 {selectedFile && (
                   <div className="mt-2">
-                    <p>Selected File: {selectedFile.name}</p>
+                    <p className="text-sm text-gray-600">Selected File: {selectedFile.name}</p>
                   </div>
                 )}
-                {isUploading ? (
-                  <p>Uploading...</p>
-                ) : (
-                  uploadedFileUrl ? (
-                    <p>File uploaded successfully!</p>
-                  ) : null
+                {isUploading && (
+                  <p className="text-sm text-blue-600 mt-2">Uploading file...</p>
                 )}
               </div>
-              <Button type="submit" className="w-full" disabled={isSubmitting}>
-                {isSubmitting ? "Submitting..." : "Submit Claim"}
+              
+              <Button 
+                type="submit" 
+                className="w-full" 
+                disabled={isSubmitting || isUploading}
+              >
+                {isSubmitting ? "Submitting Claim..." : "Submit Claim"}
               </Button>
             </form>
           </CardContent>
