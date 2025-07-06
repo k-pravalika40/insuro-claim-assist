@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 
 export interface Claim {
   id: string;
+  user_id: string | null;
   claim_type: string | null;
   status: string | null;
   created_at: string | null;
