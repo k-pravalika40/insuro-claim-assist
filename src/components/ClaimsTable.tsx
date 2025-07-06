@@ -1,38 +1,30 @@
 
 import { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { FileText, Plus } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Eye, CheckCircle } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useClaims } from "@/hooks/useClaims";
-import { LoadingSpinner } from "@/components/LoadingSpinner";
-import { EmptyState } from "@/components/EmptyState";
-import { SearchInput } from "@/components/SearchInput";
-import { useDebounce } from "@/hooks/useDebounce";
+import { useAIVerification } from "@/hooks/useAIVerification";
+import LoadingSpinner from "./LoadingSpinner";
 
-const ClaimsTable = () => {
-  const { claims, loading, error } = useClaims();
-  const [searchQuery, setSearchQuery] = useState('');
-  const debouncedSearchQuery = useDebounce(searchQuery, 300);
+interface ClaimsTableProps {
+  showVerifyButton?: boolean;
+}
 
-  const filteredClaims = claims.filter(claim => 
-    claim.claim_type?.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
-    claim.vehicle_number?.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
-    claim.status?.toLowerCase().includes(debouncedSearchQuery.toLowerCase())
-  );
+const ClaimsTable = ({ showVerifyButton = false }: ClaimsTableProps) => {
+  const { claims, loading, error, refetch } = useClaims();
+  const { verifyClaim, isVerifying } = useAIVerification();
+  const [verifyingClaimId, setVerifyingClaimId] = useState<string | null>(null);
 
   const getStatusColor = (status: string | null) => {
     switch (status?.toLowerCase()) {
-      case 'approved':
-        return 'bg-green-100 text-green-800';
-      case 'rejected':
-        return 'bg-red-100 text-red-800';
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
+      case 'approved': return 'bg-green-100 text-green-800';
+      case 'rejected': return 'bg-red-100 text-red-800';
+      case 'pending': return 'bg-yellow-100 text-yellow-800';
+      case 'under review': return 'bg-blue-100 text-blue-800';
+      default: return 'bg-gray-100 text-gray-800';
     }
   };
 
@@ -41,16 +33,24 @@ const ClaimsTable = () => {
     return new Date(dateString).toLocaleDateString();
   };
 
+  const handleVerify = async (claimId: string) => {
+    setVerifyingClaimId(claimId);
+    const result = await verifyClaim(claimId);
+    if (result) {
+      // Refresh claims list to show updated status
+      refetch();
+    }
+    setVerifyingClaimId(null);
+  };
+
   if (loading) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center">
-            <FileText className="h-5 w-5 mr-2" />
-            My Claims
-          </CardTitle>
+          <CardTitle>Your Claims</CardTitle>
+          <CardDescription>Review and track your insurance claims</CardDescription>
         </CardHeader>
-        <CardContent className="flex justify-center py-8">
+        <CardContent>
           <LoadingSpinner />
         </CardContent>
       </Card>
@@ -61,15 +61,11 @@ const ClaimsTable = () => {
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center">
-            <FileText className="h-5 w-5 mr-2" />
-            My Claims
-          </CardTitle>
+          <CardTitle>Your Claims</CardTitle>
+          <CardDescription>Review and track your insurance claims</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="text-center py-8">
-            <p className="text-red-600">Error loading claims: {error.message}</p>
-          </div>
+          <p className="text-red-600">Error loading claims: {error.message}</p>
         </CardContent>
       </Card>
     );
@@ -78,80 +74,69 @@ const ClaimsTable = () => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center">
-          <FileText className="h-5 w-5 mr-2" />
-          My Claims
-        </CardTitle>
-        <CardDescription>
-          Track and manage your insurance claims
-        </CardDescription>
-        <div className="flex justify-between items-center mt-4">
-          <SearchInput
-            placeholder="Search claims..."
-            onSearch={setSearchQuery}
-            className="max-w-sm"
-          />
-          <Link to="/submit-claim">
-            <Button className="inline-flex items-center">
-              <Plus className="h-4 w-4 mr-2" />
-              New Claim
-            </Button>
-          </Link>
-        </div>
+        <CardTitle>Your Claims</CardTitle>
+        <CardDescription>Review and track your insurance claims</CardDescription>
       </CardHeader>
       <CardContent>
         {claims.length === 0 ? (
-          <EmptyState
-            title="No claims found"
-            description="You haven't submitted any insurance claims yet. Get started by submitting your first claim."
-            actionLabel="Submit First Claim"
-            onAction={() => window.location.href = '/submit-claim'}
-            icon={<FileText className="h-12 w-12" />}
-          />
-        ) : filteredClaims.length === 0 ? (
-          <EmptyState
-            title="No matching claims"
-            description="No claims match your search criteria. Try adjusting your search terms."
-            icon={<FileText className="h-12 w-12" />}
-          />
+          <div className="text-center py-8">
+            <p className="text-gray-500 mb-4">No claims found</p>
+            <Link to="/submit-claim">
+              <Button>Submit Your First Claim</Button>
+            </Link>
+          </div>
         ) : (
           <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Claim ID</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Vehicle</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredClaims.map((claim) => (
-                  <TableRow key={claim.id}>
-                    <TableCell className="font-mono text-sm">
-                      {claim.id.substring(0, 8)}...
-                    </TableCell>
-                    <TableCell>{claim.claim_type || 'N/A'}</TableCell>
-                    <TableCell>{claim.vehicle_number || 'N/A'}</TableCell>
-                    <TableCell>{formatDate(claim.incident_date)}</TableCell>
-                    <TableCell>
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="border-b">
+                  <th className="text-left p-4 font-medium">Claim ID</th>
+                  <th className="text-left p-4 font-medium">Type</th>
+                  <th className="text-left p-4 font-medium">Date</th>
+                  <th className="text-left p-4 font-medium">Status</th>
+                  <th className="text-left p-4 font-medium">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {claims.map((claim) => (
+                  <tr key={claim.id} className="border-b hover:bg-gray-50">
+                    <td className="p-4">
+                      <span className="font-mono text-sm">
+                        {claim.id.substring(0, 8)}...
+                      </span>
+                    </td>
+                    <td className="p-4">{claim.claim_type || 'N/A'}</td>
+                    <td className="p-4">{formatDate(claim.created_at)}</td>
+                    <td className="p-4">
                       <Badge className={getStatusColor(claim.status)}>
                         {claim.status || 'Unknown'}
                       </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Link to={`/claim/${claim.id}`}>
-                        <Button variant="outline" size="sm">
-                          View Details
-                        </Button>
-                      </Link>
-                    </TableCell>
-                  </TableRow>
+                    </td>
+                    <td className="p-4">
+                      <div className="flex space-x-2">
+                        <Link to={`/claim/${claim.id}`}>
+                          <Button variant="outline" size="sm">
+                            <Eye className="h-4 w-4 mr-2" />
+                            View
+                          </Button>
+                        </Link>
+                        {showVerifyButton && claim.status === 'Pending' && (
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => handleVerify(claim.id)}
+                            disabled={isVerifying || verifyingClaimId === claim.id}
+                          >
+                            <CheckCircle className="h-4 w-4 mr-2" />
+                            {verifyingClaimId === claim.id ? 'Verifying...' : 'Verify'}
+                          </Button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
                 ))}
-              </TableBody>
-            </Table>
+              </tbody>
+            </table>
           </div>
         )}
       </CardContent>

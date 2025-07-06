@@ -1,60 +1,62 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User, Session } from '@supabase/supabase-js';
+import { User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
 interface AuthContextType {
   user: User | null;
-  session: Session | null;
   loading: boolean;
   signOut: () => Promise<void>;
-  signIn: (email: string, password: string) => Promise<{ error: any }>;
-  signUp: (email: string, password: string, firstName: string, lastName: string) => Promise<{ error: any }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
+    const getInitialSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
       setUser(session?.user ?? null);
       setLoading(false);
-    });
+    };
+
+    getInitialSession();
 
     // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth event:', event);
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log('Auth state changed:', event, session?.user?.id);
+        setUser(session?.user ?? null);
+        setLoading(false);
 
-      // Handle user registration - check for SIGNED_UP event
-      if (event === 'SIGNED_UP' && session?.user) {
-        console.log('New user signed up:', session.user.id);
-        
-        // Create user profile
-        const { error } = await supabase
-          .from('users')
-          .insert({
-            id: session.user.id,
-            email: session.user.email,
-            full_name: session.user.user_metadata?.full_name || '',
-            created_at: new Date().toISOString(),
-          });
+        // Create user profile on sign up
+        if (event === 'SIGNED_UP' && session?.user) {
+          try {
+            const { error } = await supabase
+              .from('users')
+              .insert([
+                {
+                  id: session.user.id,
+                  email: session.user.email,
+                  full_name: session.user.user_metadata?.full_name || '',
+                  created_at: new Date().toISOString(),
+                }
+              ]);
 
-        if (error) {
-          console.error('Error creating user profile:', error);
+            if (error) {
+              console.error('Error creating user profile:', error);
+            } else {
+              console.log('User profile created successfully');
+            }
+          } catch (error) {
+            console.error('Error in user profile creation:', error);
+          }
         }
       }
-    });
+    );
 
     return () => subscription.unsubscribe();
   }, []);
@@ -63,37 +65,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await supabase.auth.signOut();
   };
 
-  const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    return { error };
-  };
-
-  const signUp = async (email: string, password: string, firstName: string, lastName: string) => {
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          first_name: firstName,
-          last_name: lastName,
-          full_name: `${firstName} ${lastName}`,
-        },
-        emailRedirectTo: `${window.location.origin}/`
-      }
-    });
-    return { error };
-  };
-
   const value = {
     user,
-    session,
     loading,
     signOut,
-    signIn,
-    signUp,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
