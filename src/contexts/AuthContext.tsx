@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User, Session } from '@supabase/supabase-js';
+import { User, Session, AuthChangeEvent } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
 interface AuthContextType {
@@ -30,13 +30,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
+    } = supabase.auth.onAuthStateChange(async (event: AuthChangeEvent, session) => {
       console.log('Auth event:', event);
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
 
-      // Handle user registration - check for SIGNED_UP event using string comparison
+      // Handle user registration - check for SIGNED_UP event
       if (event === 'SIGNED_UP' && session?.user) {
         console.log('New user signed up:', session.user.id);
         
